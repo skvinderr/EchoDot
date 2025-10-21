@@ -5,7 +5,7 @@ An intelligent healthcare documentation solution that automatically generates st
 ## 🌟 Features
 
 - **🎤 Ambient Listening**: Passively records natural conversations without interrupting the clinical workflow
-- **🤖 AI-Powered Transcription**: Real-time speech-to-text using OpenAI Whisper
+- **🤖 AI-Powered Transcription**: Real-time speech-to-text using OpenAI  Whisper
 - **👥 Speaker Identification**: Automatically distinguishes between doctor and patient voices
 - **🏥 Medical Terminology Recognition**: Identifies symptoms, medications, diagnoses, and procedures
 - **📝 SOAP Note Generation**: Creates structured medical notes using Google Gemini AI

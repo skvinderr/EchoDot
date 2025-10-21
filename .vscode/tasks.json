@@ -1,0 +1,107 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start Backend Server",
+            "type": "shell",
+            "command": "\"C:/Users/sciad/CU - Doctor/.venv/Scripts/python.exe\"",
+            "args": ["main.py"],
+            "options": {
+                "cwd": "${workspaceFolder}/backend"
+            },
+            "group": "build",
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "Start Frontend Server",
+            "type": "shell",
+            "command": "npm",
+            "args": ["start"],
+            "options": {
+                "cwd": "${workspaceFolder}/frontend"
+            },
+            "group": "build",
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "Start Development Servers",
+            "dependsOrder": "parallel",
+            "dependsOn": [
+                "Start Backend Server",
+                "Start Frontend Server"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Install Backend Dependencies",
+            "type": "shell",
+            "command": "\"C:/Users/sciad/CU - Doctor/.venv/Scripts/python.exe\"",
+            "args": ["-m", "pip", "install", "-r", "requirements.txt"],
+            "options": {
+                "cwd": "${workspaceFolder}/backend"
+            },
+            "group": "build"
+        },
+        {
+            "label": "Install Frontend Dependencies",
+            "type": "shell",
+            "command": "npm",
+            "args": ["install"],
+            "options": {
+                "cwd": "${workspaceFolder}/frontend"
+            },
+            "group": "build"
+        },
+        {
+            "label": "Run Backend Tests",
+            "type": "shell",
+            "command": "\"C:/Users/sciad/CU - Doctor/.venv/Scripts/python.exe\"",
+            "args": ["-m", "pytest"],
+            "options": {
+                "cwd": "${workspaceFolder}/backend"
+            },
+            "group": "test"
+        },
+        {
+            "label": "Run Frontend Tests",
+            "type": "shell",
+            "command": "npm",
+            "args": ["test"],
+            "options": {
+                "cwd": "${workspaceFolder}/frontend"
+            },
+            "group": "test"
+        },
+        {
+            "label": "Build Frontend",
+            "type": "shell",
+            "command": "npm",
+            "args": ["run", "build"],
+            "options": {
+                "cwd": "${workspaceFolder}/frontend"
+            },
+            "group": "build"
+        }
+    ]
+}

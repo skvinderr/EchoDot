@@ -37,7 +37,6 @@ An intelligent healthcare documentation solution that automatically generates st
 - **SpeechRecognition**: Python library for audio processing
 
 ## 📁 Project Structure
-
 ```
 CU - Doctor/
 ├── .github/

@@ -5,9 +5,9 @@ An intelligent healthcare documentation solution that automatically generates st
 ## 🌟 Features
 
 - **🎤 Ambient Listening**: Passively records natural conversations without interrupting the clinical workflow
-- **🤖 AI-Powered Transcription**: Real-time speech-to-text using OpenAI Whisper
+- **🤖 AI-Powered Transcription**: Real-time speech-to-text using Google Speech Recognition with Gemini enhancement
 - **👥 Speaker Identification**: Automatically distinguishes between doctor and patient voices
-- **🏥 Medical Terminology Recognition**: Identifies symptoms, medications, diagnoses, and procedures
+- **🏥 Medical Terminology Recognition**: Identifies symptoms, medications, diagnoses, and procedures using Gemini AI
 - **📝 SOAP Note Generation**: Creates structured medical notes using Google Gemini AI
 - **⚡ Real-time Processing**: Live transcription with WebSocket connections
 - **🔒 HIPAA Compliance**: Healthcare-grade security and data encryption
@@ -18,8 +18,8 @@ An intelligent healthcare documentation solution that automatically generates st
 ### Backend
 - **FastAPI**: Modern, fast web framework for building APIs
 - **MongoDB**: Document database for healthcare data storage
-- **OpenAI Whisper**: State-of-the-art speech recognition
-- **Google Gemini**: Advanced language model for clinical note generation
+- **Google Speech Recognition**: Free speech-to-text service
+- **Google Gemini**: Advanced language model for clinical note generation and transcription enhancement
 - **WebSocket**: Real-time communication for live transcription
 - **Pydantic**: Data validation and settings management
 
@@ -31,8 +31,8 @@ An intelligent healthcare documentation solution that automatically generates st
 - **Axios**: Promise-based HTTP client
 
 ### AI/ML
-- **OpenAI Whisper**: Speech-to-text transcription
-- **Google Gemini Pro**: Large language model for medical note generation
+- **Google Speech Recognition**: Free speech-to-text transcription service
+- **Google Gemini Pro**: Large language model for medical note generation and transcription enhancement
 - **Librosa**: Audio processing and feature extraction
 - **SpeechRecognition**: Python library for audio processing
 
@@ -70,8 +70,7 @@ CU - Doctor/
 - Python 3.11 or higher
 - Node.js 16 or higher
 - MongoDB (local or cloud instance)
-- OpenAI API key
-- Google AI API key
+- Google AI API key (Gemini)
 
 ### 1. Clone and Setup
 
@@ -94,7 +93,6 @@ MONGODB_URL=mongodb://localhost:27017
 DATABASE_NAME=medical_scribe
 
 # AI Services
-OPENAI_API_KEY=your-openai-api-key-here
 GOOGLE_API_KEY=your-google-ai-api-key-here
 
 # Healthcare Compliance
@@ -256,7 +254,7 @@ This application implements several healthcare compliance measures:
 - [x] Database models and schemas
 - [x] Authentication and authorization system
 - [x] Real-time transcription with WebSocket
-- [x] AI integration (OpenAI Whisper + Google Gemini)
+- [x] AI integration (Google Speech Recognition + Google Gemini)
 - [x] React frontend with Material-UI
 - [x] API client and state management
 - [x] Basic UI components and pages

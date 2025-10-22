@@ -1,4 +1,3 @@
-import openai
 import google.generativeai as genai
 import speech_recognition as sr
 import io
@@ -18,7 +17,6 @@ class TranscriptionService:
     """Service for real-time audio transcription and processing"""
     
     def __init__(self):
-        self.openai_client = None
         self.gemini_model = None
         self.speech_recognizer = sr.Recognizer()
         self.active_sessions: Dict[str, Dict] = {}
@@ -27,17 +25,14 @@ class TranscriptionService:
         self._initialize_services()
     
     def _initialize_services(self):
-        """Initialize OpenAI and Google AI services"""
+        """Initialize Google AI services"""
         try:
-            if settings.OPENAI_API_KEY:
-                openai.api_key = settings.OPENAI_API_KEY
-                self.openai_client = openai
-                logger.info("OpenAI Whisper initialized successfully")
-            
             if settings.GOOGLE_API_KEY:
                 genai.configure(api_key=settings.GOOGLE_API_KEY)
                 self.gemini_model = genai.GenerativeModel('gemini-pro')
                 logger.info("Google Gemini initialized successfully")
+            else:
+                logger.error("Google API key not found. Please set GOOGLE_API_KEY in environment variables.")
                 
         except Exception as e:
             logger.error(f"Error initializing AI services: {e}")
@@ -69,33 +64,41 @@ class TranscriptionService:
         return None
     
     async def _transcribe_audio(self, audio_data: bytes, session_id: str) -> Dict[str, Any]:
-        """Transcribe audio using OpenAI Whisper"""
+        """Transcribe audio using Python SpeechRecognition with Google Speech-to-Text"""
         try:
-            # Convert bytes to audio file format
+            # Convert bytes to audio format for speech recognition
             audio_file = io.BytesIO(audio_data)
-            audio_file.name = "audio.wav"
             
-            # Use OpenAI Whisper for transcription
-            if self.openai_client:
-                transcript = await asyncio.to_thread(
-                    self.openai_client.Audio.transcribe,
-                    "whisper-1",
-                    audio_file,
-                    response_format="verbose_json"
-                )
+            # Use speech recognition with Google Speech-to-Text (free tier)
+            try:
+                with sr.AudioFile(audio_file) as source:
+                    audio = self.speech_recognizer.record(source)
                 
-                # Extract transcription details
-                text = transcript.get("text", "")
-                confidence = 1.0  # Whisper doesn't provide confidence scores
+                # Use Google Speech Recognition (free service)
+                text = self.speech_recognizer.recognize_google(audio)
+                confidence = 0.8  # Default confidence for Google Speech Recognition
                 
+            except sr.UnknownValueError:
+                text = ""
+                confidence = 0.0
+                logger.warning(f"Could not understand audio for session {session_id}")
+            except sr.RequestError as e:
+                text = ""
+                confidence = 0.0
+                logger.error(f"Google Speech Recognition error for session {session_id}: {e}")
+            
+            if text:
                 # Perform speaker identification
                 speaker = await self._identify_speaker(audio_data, text, session_id)
                 
                 # Extract medical terms
                 medical_terms = await self._extract_medical_terms(text)
                 
+                # Use Gemini to enhance transcription accuracy for medical context
+                enhanced_text = await self._enhance_medical_transcription(text)
+                
                 result = {
-                    "text": text,
+                    "text": enhanced_text or text,
                     "speaker": speaker,
                     "confidence": confidence,
                     "timestamp": datetime.utcnow().isoformat(),
@@ -146,53 +149,119 @@ class TranscriptionService:
             logger.error(f"Error identifying speaker: {e}")
             return "unknown"
     
-    async def _extract_medical_terms(self, text: str) -> List[Dict[str, Any]]:
-        """Extract medical terms and concepts from transcribed text"""
+    async def _enhance_medical_transcription(self, text: str) -> Optional[str]:
+        """Use Gemini to enhance transcription accuracy for medical context"""
         try:
-            # Simple keyword-based medical term extraction
-            # In production, this would use medical NER models
+            if not self.gemini_model or not text.strip():
+                return None
+                
+            prompt = f"""
+            Please correct and enhance this medical transcription for accuracy while preserving the original meaning. 
+            Focus on proper medical terminology, spelling, and context. Only make necessary corrections:
             
-            medical_terms = []
+            Original transcription: "{text}"
             
-            # Common medical terminology patterns
-            symptoms = ["pain", "fever", "nausea", "headache", "fatigue", "cough", "shortness of breath"]
-            medications = ["aspirin", "ibuprofen", "acetaminophen", "antibiotic", "insulin"]
-            conditions = ["hypertension", "diabetes", "asthma", "pneumonia", "infection"]
+            Provide only the corrected text without explanations.
+            """
             
-            text_lower = text.lower()
+            response = await asyncio.to_thread(
+                self.gemini_model.generate_content,
+                prompt
+            )
             
-            for term in symptoms:
-                if term in text_lower:
-                    medical_terms.append({
-                        "term": term,
-                        "category": "symptom",
-                        "confidence": 0.8,
-                        "context": text
-                    })
+            enhanced_text = response.text.strip()
+            return enhanced_text if enhanced_text != text else None
             
-            for term in medications:
-                if term in text_lower:
-                    medical_terms.append({
-                        "term": term,
-                        "category": "medication",
-                        "confidence": 0.9,
-                        "context": text
-                    })
+        except Exception as e:
+            logger.error(f"Error enhancing medical transcription: {e}")
+            return None
+    
+    async def _extract_medical_terms(self, text: str) -> List[Dict[str, Any]]:
+        """Extract medical terms and concepts from transcribed text using Gemini"""
+        try:
+            if not self.gemini_model or not text.strip():
+                return []
+                
+            prompt = f"""
+            Extract medical terms from this transcription and categorize them. Return only valid JSON format:
             
-            for term in conditions:
-                if term in text_lower:
-                    medical_terms.append({
-                        "term": term,
-                        "category": "diagnosis",
-                        "confidence": 0.85,
-                        "context": text
-                    })
+            Text: "{text}"
             
-            return medical_terms
+            Please identify and categorize medical terms into:
+            - symptoms
+            - medications  
+            - conditions/diagnoses
+            - procedures
+            - body_parts
+            
+            Return as JSON array with format:
+            [
+                {
+                    "term": "medical term",
+                    "category": "symptom|medication|condition|procedure|body_part",
+                    "confidence": 0.8,
+                    "context": "surrounding context"
+                }
+            ]
+            
+            Return empty array [] if no medical terms found.
+            """
+            
+            response = await asyncio.to_thread(
+                self.gemini_model.generate_content,
+                prompt
+            )
+            
+            try:
+                medical_terms = json.loads(response.text)
+                return medical_terms if isinstance(medical_terms, list) else []
+            except json.JSONDecodeError:
+                # Fallback to simple keyword extraction
+                return self._simple_medical_term_extraction(text)
             
         except Exception as e:
             logger.error(f"Error extracting medical terms: {e}")
-            return []
+            return self._simple_medical_term_extraction(text)
+    
+    def _simple_medical_term_extraction(self, text: str) -> List[Dict[str, Any]]:
+        """Fallback simple keyword-based medical term extraction"""
+        medical_terms = []
+        
+        # Common medical terminology patterns
+        symptoms = ["pain", "fever", "nausea", "headache", "fatigue", "cough", "shortness of breath", "dizziness", "chest pain"]
+        medications = ["aspirin", "ibuprofen", "acetaminophen", "antibiotic", "insulin", "metformin", "lisinopril"]
+        conditions = ["hypertension", "diabetes", "asthma", "pneumonia", "infection", "flu", "cold"]
+        
+        text_lower = text.lower()
+        
+        for term in symptoms:
+            if term in text_lower:
+                medical_terms.append({
+                    "term": term,
+                    "category": "symptom",
+                    "confidence": 0.7,
+                    "context": text
+                })
+        
+        for term in medications:
+            if term in text_lower:
+                medical_terms.append({
+                    "term": term,
+                    "category": "medication",
+                    "confidence": 0.8,
+                    "context": text
+                })
+        
+        for term in conditions:
+            if term in text_lower:
+                medical_terms.append({
+                    "term": term,
+                    "category": "condition",
+                    "confidence": 0.75,
+                    "context": text
+                })
+        
+        return medical_terms
     
     async def generate_soap_note(self, session_id: str, patient_info: Dict[str, Any]) -> Dict[str, Any]:
         """Generate SOAP note from transcription history"""

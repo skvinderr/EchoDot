@@ -37,7 +37,6 @@ An intelligent healthcare documentation solution that automatically generates st
 - **SpeechRecognition**: Python library for audio processing
 
 ## 📁 Project Structure
-
 ```
 CU - Doctor/
 ├── .github/
@@ -213,7 +212,6 @@ This application implements several healthcare compliance measures:
 - **CORS Protection**: Configured CORS policies
 - **Input Validation**: Comprehensive input validation and sanitization
 - **Rate Limiting**: API rate limiting to prevent abuse
-
 ## 🚨 Important Notes
 
 ### For Production Deployment:

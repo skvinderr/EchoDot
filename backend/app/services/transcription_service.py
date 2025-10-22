@@ -29,8 +29,8 @@ class TranscriptionService:
         try:
             if settings.GOOGLE_API_KEY:
                 genai.configure(api_key=settings.GOOGLE_API_KEY)
-                self.gemini_model = genai.GenerativeModel('gemini-pro')
-                logger.info("Google Gemini initialized successfully")
+                self.gemini_model = genai.GenerativeModel('gemini-2.5-flash')
+                logger.info("Google Gemini 2.5 Flash initialized successfully")
             else:
                 logger.error("Google API key not found. Please set GOOGLE_API_KEY in environment variables.")
                 

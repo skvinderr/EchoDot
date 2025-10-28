@@ -47,83 +47,39 @@ export default function SOAPNotesPage() {
   const generateSOAPNote = async () => {
     setIsGenerating(true)
     
-    // Simulate AI processing time
-    await new Promise(resolve => setTimeout(resolve, 3000))
-    
-    const generatedSOAP: SOAPSection = {
-      subjective: `Chief Complaint: Patient reports chest pain for the past 3 days.
+    try {
+      // Use the actual API endpoint with real Gemini AI
+      const response = await fetch('/api/soap-notes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId: 'session_12345', // You can make this dynamic
+          transcript: sampleTranscript
+        })
+      })
 
-History of Present Illness: Patient describes experiencing dull chest pain that has persisted for three days. The pain is characterized as a dull ache that worsens with deep breathing and movement. Patient also reports associated symptoms of shortness of breath and occasional lightheadedness. No reported radiation of pain or specific triggers identified during initial questioning.
+      if (!response.ok) {
+        throw new Error('Failed to generate SOAP note')
+      }
 
-Review of Systems: 
-- Cardiovascular: Positive for chest pain, shortness of breath, and lightheadedness
-- Respiratory: Positive for dyspnea on exertion
-- Constitutional: Denies fever, chills, or weight loss`,
-
-      objective: `Vital Signs: (To be recorded)
-- Blood Pressure: ___
-- Heart Rate: ___  
-- Respiratory Rate: ___
-- Temperature: ___
-- Oxygen Saturation: ___
-
-Physical Examination:
-- General Appearance: Patient appears comfortable at rest
-- Cardiovascular: Heart sounds to be assessed, regular rate and rhythm
-- Respiratory: Lung sounds to be evaluated, no obvious distress
-- Chest wall: Inspection and palpation pending
-
-Diagnostic Tests: (Pending)
-- 12-lead ECG
-- Chest X-ray
-- Laboratory studies as indicated`,
-
-      assessment: `Primary Concerns:
-1. Chest pain - differential includes:
-   • Musculoskeletal etiology (costochondritis, muscle strain)
-   • Cardiac causes (angina, myocardial infarction - requires ruling out)
-   • Pulmonary causes (pneumonia, pulmonary embolism)
-   • Gastrointestinal causes (GERD, peptic ulcer disease)
-
-2. Associated dyspnea and lightheadedness - concerning for potential cardiac etiology
-
-Risk Stratification: Given the combination of chest pain, dyspnea, and lightheadedness, cardiac evaluation is warranted to rule out acute coronary syndrome. Patient requires immediate assessment and workup.`,
-
-      plan: `Immediate Actions:
-1. Complete cardiovascular examination and obtain 12-lead ECG
-2. Chest X-ray to evaluate for pulmonary pathology
-3. Laboratory studies: CBC, CMP, troponin levels, D-dimer if indicated
-4. Vital signs monitoring
-
-Diagnostic Workup:
-- ECG to assess for ischemic changes or arrhythmias
-- Chest imaging to rule out pneumonia or other pulmonary causes
-- Cardiac biomarkers to evaluate for myocardial injury
-- Consider stress testing or cardiology consultation based on initial findings
-
-Treatment:
-- Supportive care pending evaluation results
-- Pain management as appropriate
-- Continuous monitoring if indicated
-- NPO pending evaluation if intervention required
-
-Follow-up:
-- Results review and clinical correlation
-- Cardiology referral if cardiac etiology suspected
-- Patient education on warning signs
-- Return precautions for worsening symptoms
-- Follow-up appointment in 2-3 days or sooner if symptoms persist
-
-Patient Instructions:
-- Return immediately if chest pain worsens or becomes severe
-- Seek immediate care for severe shortness of breath
-- Avoid strenuous activity until evaluation complete
-- Take medications as prescribed`
+      const data = await response.json()
+      setSoapNote(data.soapNote)
+      setHasGenerated(true)
+    } catch (error) {
+      console.error('Error generating SOAP note:', error)
+      // Fallback to a basic structure if API fails
+      setSoapNote({
+        subjective: 'Unable to generate subjective section. Please check your connection and try again.',
+        objective: 'Unable to generate objective section. Please check your connection and try again.',
+        assessment: 'Unable to generate assessment section. Please check your connection and try again.',
+        plan: 'Unable to generate plan section. Please check your connection and try again.'
+      })
+      setHasGenerated(true)
+    } finally {
+      setIsGenerating(false)
     }
-
-    setSoapNote(generatedSOAP)
-    setIsGenerating(false)
-    setHasGenerated(true)
   }
 
   const handleSectionChange = (section: keyof SOAPSection, value: string) => {
@@ -326,9 +282,9 @@ Patient Instructions:
                       />
                     ) : (
                       <div className="prose max-w-none">
-                        <pre className="whitespace-pre-wrap text-gray-800 font-sans leading-relaxed">
+                        <div className="whitespace-pre-wrap text-gray-900 font-sans leading-relaxed bg-gray-50 p-4 rounded-lg">
                           {soapNote.subjective}
-                        </pre>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -350,9 +306,9 @@ Patient Instructions:
                       />
                     ) : (
                       <div className="prose max-w-none">
-                        <pre className="whitespace-pre-wrap text-gray-800 font-sans leading-relaxed">
+                        <div className="whitespace-pre-wrap text-gray-900 font-sans leading-relaxed bg-gray-50 p-4 rounded-lg">
                           {soapNote.objective}
-                        </pre>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -374,9 +330,9 @@ Patient Instructions:
                       />
                     ) : (
                       <div className="prose max-w-none">
-                        <pre className="whitespace-pre-wrap text-gray-800 font-sans leading-relaxed">
+                        <div className="whitespace-pre-wrap text-gray-900 font-sans leading-relaxed bg-gray-50 p-4 rounded-lg">
                           {soapNote.assessment}
-                        </pre>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -398,9 +354,9 @@ Patient Instructions:
                       />
                     ) : (
                       <div className="prose max-w-none">
-                        <pre className="whitespace-pre-wrap text-gray-800 font-sans leading-relaxed">
+                        <div className="whitespace-pre-wrap text-gray-900 font-sans leading-relaxed bg-gray-50 p-4 rounded-lg">
                           {soapNote.plan}
-                        </pre>
+                        </div>
                       </div>
                     )}
                   </div>

@@ -1,1 +1,4 @@
-{}
+{
+  "/notes/page": "app/notes/page.js",
+  "/api/soap-notes/route": "app/api/soap-notes/route.js"
+}

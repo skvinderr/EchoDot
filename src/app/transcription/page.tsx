@@ -28,6 +28,7 @@ export default function TranscriptionPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([])
+  const [interimTranscript, setInterimTranscript] = useState('')
   const [sessionDuration, setSessionDuration] = useState(0)
   const [audioLevel, setAudioLevel] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -38,6 +39,8 @@ export default function TranscriptionPage() {
   const analyserRef = useRef<AnalyserNode | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const recognitionRef = useRef<any>(null)
+  const interimTranscriptRef = useRef<string>('')
 
   // Sample conversation data for demonstration
   const sampleConversations = [
@@ -73,14 +76,111 @@ export default function TranscriptionPage() {
       
       // Setup media recorder
       mediaRecorderRef.current = new MediaRecorder(stream)
+      mediaRecorderRef.current.start(2000) // Record in 2-second chunks
       
-      mediaRecorderRef.current.ondataavailable = () => {
-        if (isRecording) {
-          simulateTranscription()
+      // Setup Web Speech API for real transcription
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        recognitionRef.current = new SpeechRecognition()
+        
+        recognitionRef.current.continuous = true
+        recognitionRef.current.interimResults = true
+        recognitionRef.current.lang = 'en-US'
+        
+        recognitionRef.current.onstart = () => {
+          console.log('Speech recognition started')
         }
+        
+        recognitionRef.current.onresult = (event: any) => {
+          let finalTranscript = ''
+          let interimText = ''
+          
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript
+            const confidence = event.results[i][0].confidence
+            
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript
+              
+              // Simple speaker detection based on content patterns
+              const detectSpeaker = (text: string): 'doctor' | 'patient' => {
+                const lowerText = text.toLowerCase()
+                
+                // Doctor phrases/patterns
+                const doctorPatterns = [
+                  'can you', 'how long', 'any pain', 'let me', 'i recommend', 
+                  'we need to', 'i\'d like to', 'prescription', 'diagnosis',
+                  'examination', 'symptoms', 'treatment', 'medicine'
+                ]
+                
+                // Patient phrases/patterns
+                const patientPatterns = [
+                  'i feel', 'it hurts', 'i have', 'since yesterday', 'i\'ve been',
+                  'my pain', 'i can\'t', 'it started', 'i\'m worried'
+                ]
+                
+                const doctorScore = doctorPatterns.reduce((score, pattern) => 
+                  lowerText.includes(pattern) ? score + 1 : score, 0
+                )
+                
+                const patientScore = patientPatterns.reduce((score, pattern) => 
+                  lowerText.includes(pattern) ? score + 1 : score, 0
+                )
+                
+                if (doctorScore > patientScore) return 'doctor'
+                if (patientScore > doctorScore) return 'patient'
+                
+                // Fallback to alternating pattern
+                return transcript.length % 2 === 0 ? 'doctor' : 'patient'
+              }
+              
+              // Add to transcript array
+              const newEntry: TranscriptEntry = {
+                id: `entry_${Date.now()}_${Math.random()}`,
+                timestamp: new Date().toLocaleTimeString(),
+                speaker: detectSpeaker(transcript),
+                text: transcript.trim(),
+                confidence: confidence || 0.8,
+              }
+              
+              if (newEntry.text.length > 0) {
+                setTranscript((prev: any) => [...prev, newEntry])
+              }
+            } else {
+              interimText += transcript
+            }
+          }
+          
+          // Update interim transcript state
+          setInterimTranscript(interimText)
+        }
+        
+        recognitionRef.current.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error)
+          if (event.error === 'not-allowed') {
+            alert('Microphone access denied. Please allow microphone permissions and try again.')
+          }
+        }
+        
+        recognitionRef.current.onend = () => {
+          console.log('Speech recognition ended')
+          if (isRecording && !isPaused) {
+            // Restart recognition if still recording
+            setTimeout(() => {
+              if (recognitionRef.current && isRecording) {
+                recognitionRef.current.start()
+              }
+            }, 100)
+          }
+        }
+        
+        recognitionRef.current.start()
+      } else {
+        alert('Speech recognition not supported in this browser. Please use Chrome, Edge, or Safari.')
+        // Fallback to simulation for unsupported browsers
+        simulateTranscription()
       }
       
-      mediaRecorderRef.current.start(2000) // Record in 2-second chunks
       setIsRecording(true)
       setIsPaused(false)
       
@@ -104,8 +204,17 @@ export default function TranscriptionPage() {
       setIsRecording(false)
       setIsPaused(false)
       
+      // Stop speech recognition
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+        recognitionRef.current = null
+      }
+      
+      // Clear interim transcript
+      setInterimTranscript('')
+      
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current.getTracks().forEach((track: any) => track.stop())
       }
       
       if (intervalRef.current) {
@@ -122,9 +231,17 @@ export default function TranscriptionPage() {
     if (mediaRecorderRef.current) {
       if (isPaused) {
         mediaRecorderRef.current.resume()
+        // Resume speech recognition
+        if (recognitionRef.current) {
+          recognitionRef.current.start()
+        }
         setIsPaused(false)
       } else {
         mediaRecorderRef.current.pause()
+        // Pause speech recognition
+        if (recognitionRef.current) {
+          recognitionRef.current.stop()
+        }
         setIsPaused(true)
       }
     }
@@ -420,6 +537,33 @@ export default function TranscriptionPage() {
                         </motion.div>
                       ))}
                     </AnimatePresence>
+                    
+                    {/* Interim Transcript Display */}
+                    {interimTranscript && isRecording && !isPaused && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 0.7 }}
+                        className="p-4 rounded-lg border-l-4 border-gray-300 bg-gray-50"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full mr-3 bg-gray-400 text-white">
+                              <MicrophoneIcon className="h-4 w-4" />
+                            </div>
+                            <span className="text-sm font-semibold text-gray-600">
+                              Live (Processing...)
+                            </span>
+                          </div>
+                          <div className="flex items-center text-xs text-gray-400">
+                            <div className="animate-pulse rounded-full h-2 w-2 bg-red-500 mr-2"></div>
+                            <span>Real-time</span>
+                          </div>
+                        </div>
+                        <p className="text-gray-600 leading-relaxed italic">
+                          {interimTranscript}
+                        </p>
+                      </motion.div>
+                    )}
                   </div>
                 )}
               </div>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { generateSOAPNote } from '../../../lib/gemini'
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,20 +19,29 @@ export async function POST(request: NextRequest) {
     
     console.log('Generating SOAP note for transcript:', transcriptText.substring(0, 100) + '...')
     
-    // Mock SOAP note generation (TODO: Implement AI when Google Gemini is set up)
-    const soapNote = {
-      subjective: `Patient reports symptoms based on the conversation. Key complaints and history from the transcript:\n\n${transcriptText.substring(0, 200)}...`,
-      objective: 'Physical examination findings to be documented based on clinical assessment.',
-      assessment: 'Clinical assessment and diagnosis based on subjective and objective findings.',
-      plan: 'Treatment plan and follow-up care recommendations.'
+    try {
+      // Use real Gemini AI to generate SOAP note
+      const soapNote = await generateSOAPNote(transcriptText)
+      
+      // TODO: Save to database when MongoDB is set up
+      if (sessionId) {
+        console.log('Saving SOAP note for session:', sessionId)
+      }
+      
+      return NextResponse.json({ soapNote })
+    } catch (aiError) {
+      console.error('AI generation failed:', aiError)
+      
+      // Fallback SOAP note if AI fails
+      const fallbackSoapNote = {
+        subjective: `Patient conversation transcript (AI generation temporarily unavailable):\n\n${transcriptText.substring(0, 500)}${transcriptText.length > 500 ? '...' : ''}`,
+        objective: 'Physical examination findings to be documented during clinical assessment. AI-generated content temporarily unavailable.',
+        assessment: 'Clinical assessment and diagnosis to be completed based on subjective and objective findings. Please review transcript manually.',
+        plan: 'Treatment plan and follow-up care recommendations to be determined by healthcare provider.'
+      }
+      
+      return NextResponse.json({ soapNote: fallbackSoapNote })
     }
-    
-    // TODO: Save to database when MongoDB is set up
-    if (sessionId) {
-      console.log('Saving SOAP note for session:', sessionId)
-    }
-    
-    return NextResponse.json({ soapNote })
   } catch (error) {
     console.error('Error generating SOAP note:', error)
     return NextResponse.json(

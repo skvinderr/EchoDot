@@ -1,4 +1,6 @@
 {
-  "/notes/page": "app/notes/page.js",
-  "/api/soap-notes/route": "app/api/soap-notes/route.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/page": "app/page.js",
+  "/transcription/page": "app/transcription/page.js",
+  "/notes/page": "app/notes/page.js"
 }

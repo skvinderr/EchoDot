@@ -238,7 +238,17 @@ export default function TranscriptionPage() {
               }
               
               if (newEntry.text.length > 0) {
-                setTranscript((prev: any) => [...prev, newEntry])
+                setTranscript((prev: any) => {
+                  const updatedTranscript = [...prev, newEntry]
+                  // Save to localStorage for SOAP notes page
+                  localStorage.setItem('currentTranscript', JSON.stringify(updatedTranscript))
+                  localStorage.setItem('sessionInfo', JSON.stringify({
+                    sessionId: sessionId,
+                    duration: sessionDuration,
+                    timestamp: new Date().toISOString()
+                  }))
+                  return updatedTranscript
+                })
               }
             } else {
               interimText += transcript

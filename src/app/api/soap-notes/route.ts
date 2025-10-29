@@ -18,10 +18,13 @@ export async function POST(request: NextRequest) {
       : transcript
     
     console.log('Generating SOAP note for transcript:', transcriptText.substring(0, 100) + '...')
+    console.log('API Key available:', !!process.env.GOOGLE_AI_API_KEY)
     
     try {
       // Use real Gemini AI to generate SOAP note
+      console.log('Calling Gemini API...')
       const soapNote = await generateSOAPNote(transcriptText)
+      console.log('Gemini API response received:', soapNote)
       
       // TODO: Save to database when MongoDB is set up
       if (sessionId) {
@@ -31,6 +34,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ soapNote })
     } catch (aiError) {
       console.error('AI generation failed:', aiError)
+      const errorDetails = aiError instanceof Error ? { message: aiError.message, stack: aiError.stack } : aiError
+      console.error('Error details:', errorDetails)
       
       // Fallback SOAP note if AI fails
       const fallbackSoapNote = {

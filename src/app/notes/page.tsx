@@ -38,8 +38,39 @@ export default function SOAPNotesPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [hasGenerated, setHasGenerated] = useState(false)
+  const [currentTranscript, setCurrentTranscript] = useState(sampleTranscript)
+  const [sessionInfo, setSessionInfo] = useState({
+    sessionId: 'session_12345',
+    duration: '15:30',
+    timestamp: new Date().toISOString()
+  })
 
   useEffect(() => {
+    // Load real transcript data from localStorage
+    const savedTranscript = localStorage.getItem('currentTranscript')
+    const savedSessionInfo = localStorage.getItem('sessionInfo')
+    
+    if (savedTranscript) {
+      try {
+        const parsedTranscript = JSON.parse(savedTranscript)
+        if (parsedTranscript && parsedTranscript.length > 0) {
+          setCurrentTranscript(parsedTranscript)
+          console.log('Loaded transcript with', parsedTranscript.length, 'entries')
+        }
+      } catch (error) {
+        console.error('Error parsing saved transcript:', error)
+      }
+    }
+    
+    if (savedSessionInfo) {
+      try {
+        const parsedSessionInfo = JSON.parse(savedSessionInfo)
+        setSessionInfo(parsedSessionInfo)
+      } catch (error) {
+        console.error('Error parsing saved session info:', error)
+      }
+    }
+    
     // Auto-generate SOAP note on page load
     generateSOAPNote()
   }, [])
@@ -55,26 +86,33 @@ export default function SOAPNotesPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          sessionId: 'session_12345', // You can make this dynamic
-          transcript: sampleTranscript
+          sessionId: sessionInfo.sessionId,
+          transcript: currentTranscript
         })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to generate SOAP note')
+        throw new Error(`API call failed: ${response.status} ${response.statusText}`)
       }
 
       const data = await response.json()
-      setSoapNote(data.soapNote)
-      setHasGenerated(true)
+      
+      if (data.soapNote) {
+        setSoapNote(data.soapNote)
+        setHasGenerated(true)
+        console.log('SOAP note generated successfully:', data.soapNote)
+      } else {
+        throw new Error('No SOAP note in response')
+      }
     } catch (error) {
       console.error('Error generating SOAP note:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
       // Fallback to a basic structure if API fails
       setSoapNote({
-        subjective: 'Unable to generate subjective section. Please check your connection and try again.',
-        objective: 'Unable to generate objective section. Please check your connection and try again.',
-        assessment: 'Unable to generate assessment section. Please check your connection and try again.',
-        plan: 'Unable to generate plan section. Please check your connection and try again.'
+        subjective: `Error generating SOAP note: ${errorMessage}\n\nTranscript data (${currentTranscript.length} entries):\n${currentTranscript.map(entry => `${entry.speaker}: ${entry.text}`).join('\n').substring(0, 500)}...`,
+        objective: 'Unable to generate objective section due to API error. Please check your internet connection and Gemini API key configuration.',
+        assessment: 'Unable to generate assessment section due to API error. Please try again or review the transcript manually.',
+        plan: 'Unable to generate plan section due to API error. Please document treatment plan manually.'
       })
       setHasGenerated(true)
     } finally {
@@ -118,6 +156,20 @@ export default function SOAPNotesPage() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                onClick={generateSOAPNote}
+                disabled={isGenerating}
+                className={`flex items-center px-4 py-2 rounded-lg font-semibold transition-all duration-200 ${
+                  isGenerating 
+                    ? 'bg-gray-400 cursor-not-allowed text-white'
+                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+                }`}
+              >
+                <SparklesIcon className="h-4 w-4 mr-2" />
+                {isGenerating ? 'Generating...' : 'Regenerate AI Notes'}
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setIsEditing(!isEditing)}
                 className={`flex items-center px-4 py-2 rounded-lg font-semibold transition-all duration-200 ${
                   isEditing 
@@ -155,19 +207,19 @@ export default function SOAPNotesPage() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Session ID:</span>
-                  <span className="font-medium">session_12345</span>
+                  <span className="font-medium">{sessionInfo.sessionId}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Date:</span>
-                  <span className="font-medium">{new Date().toLocaleDateString()}</span>
+                  <span className="font-medium">{new Date(sessionInfo.timestamp).toLocaleDateString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Duration:</span>
-                  <span className="font-medium">15:30</span>
+                  <span className="font-medium">{sessionInfo.duration}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Entries:</span>
-                  <span className="font-medium">{sampleTranscript.length}</span>
+                  <span className="font-medium">{currentTranscript.length}</span>
                 </div>
               </div>
             </motion.div>
@@ -181,7 +233,7 @@ export default function SOAPNotesPage() {
             >
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Transcript Summary</h3>
               <div className="space-y-3 max-h-64 overflow-y-auto">
-                {sampleTranscript.map((entry, index) => (
+                {currentTranscript.map((entry, index) => (
                   <div 
                     key={index}
                     className={`p-3 rounded-lg text-sm ${

@@ -1,5 +1,4 @@
 {
-  "/transcription/page": "app/transcription/page.js",
   "/notes/page": "app/notes/page.js",
-  "/page": "app/page.js"
+  "/api/soap-notes/route": "app/api/soap-notes/route.js"
 }
